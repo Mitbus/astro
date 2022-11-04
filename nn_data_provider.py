@@ -6,8 +6,8 @@ import json
 batch_size = 12
 data_size = 10
 iters = 1000
-shape_x = 224
-shape_y = 224
+shape_x = 256
+shape_y = 256
 
 
 ds = DataSet('data/HFI_SkyMap_100_2048_R2.02_full.fits', batch_size=batch_size)
