@@ -62,16 +62,11 @@ class RBottleneck(nn.Module):
 class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(in_features=1000, out_features=2048, bias=True)
+        self.fc = nn.Linear(in_features=1000, out_features=1024, bias=True)
         # It's impossible to invert AdaptiveAvgPool2d but it may be simulated by ConvTranspose2d
         # https://discuss.pytorch.org/t/is-it-possible-to-find-the-inverse-of-adaptiveavgpool2d/124264
-        self.avgpool = nn.ConvTranspose2d(2048, 2048, kernel_size=(8, 8), stride=(1, 1), bias=False)
+        self.avgpool = nn.ConvTranspose2d(1024, 1024, kernel_size=(8, 8), stride=(1, 1), bias=False)
         #
-        self.layer4 = nn.Sequential(
-            RBottleneck(2048, 512, 2048, stride=1),
-            RBottleneck(2048, 512, 2048, stride=1),
-            RBottleneck(2048, 512, 1024, stride=2, downsample=downsample(2048, 1024, 2))
-        )
         self.layer3 = nn.Sequential(
             RBottleneck(1024, 256, 1024, stride=1),
             RBottleneck(1024, 256, 1024, stride=1),
@@ -100,7 +95,7 @@ class Decoder(nn.Module):
         self.bn1 = nn.BatchNorm2d(1)
     def _forward_impl(self, x, resnet_maxpool_indices):
         x = self.fc(x)
-        x = x.view(x.shape[0], 2048, 1, 1)
+        x = x.view(x.shape[0], 1024, 1, 1)
         x = self.avgpool(x)
         #
         x = self.layer4(x)
