@@ -95,8 +95,9 @@ def test():
     for i in range(len(smooth_loss)):
         wandb.log({'loss': smooth_loss[i], 'lr': data[i,0]})
 
-print('Testing best learning rate')
-test()
+if test_start:
+    print('Testing best learning rate')
+    test()
 
 
 

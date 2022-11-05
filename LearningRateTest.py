@@ -1,4 +1,5 @@
 import numpy as np
+from Config import *
 
 def test(model, data_iter, optimezer, criterion, lr_low=1e-6, lr_max=1e-1, mult=1.1):
     errors = []
@@ -12,7 +13,10 @@ def test(model, data_iter, optimezer, criterion, lr_low=1e-6, lr_max=1e-1, mult=
 
         err = criterion(y_hat, y)
         err.backward()
-        errors.append([lr, err.item()])
+        item = err.item()
+        if item > max_test_error:
+            item = errors[-1][1]
+        errors.append([lr, item])
         print('lr, error: \t', errors[-1])
 
         optim.step()
