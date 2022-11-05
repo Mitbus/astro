@@ -4,6 +4,8 @@ import json
 import numpy as np
 
 
+# config
+
 batch_size = 1024
 iters = 1000
 shape_x = 256
