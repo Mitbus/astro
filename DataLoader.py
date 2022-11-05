@@ -1,4 +1,5 @@
 from multiprocessing import Queue, Process
+import time
 
 eof = None
 
