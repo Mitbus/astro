@@ -1,5 +1,5 @@
 from multiprocessing import Queue, Process, freeze_support
-mport time
+import time
 import os
 import torch
 import numpy as np
