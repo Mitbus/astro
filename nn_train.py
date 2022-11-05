@@ -115,6 +115,11 @@ if cirterion2_mult != 0:
 
 print('Processing test data...')
 tx, ty, i, i_total, epoch = next(data_loader(0, 1))
+if batch_size == 1:
+    # MSELoss cant user mean for match != 1
+    x_dims = 1
+else:
+    x_dims = np.prod(tx.shape)
 losses = []
 ma_param = loss_step * 5
 ma_losses = []
@@ -151,11 +156,11 @@ for x,y,i,i_total, epoch in data_iter:
     y_pred = netD._forward_impl(vec, ind)
 
     if cirterion2_mult != 0:
-        e1 = criterion1(y_pred, y)
+        e1 = criterion1(y_pred, y) / x_dims
         e2 = criterion2(y_pred, y)
         err = e1 + e2*cirterion2_mult
     else:
-        err = criterion1(y_pred, y)
+        err = criterion1(y_pred, y) / x_dims
     err.backward()
     losses.append(err.item())
 
@@ -172,7 +177,7 @@ for x,y,i,i_total, epoch in data_iter:
         with torch.no_grad():
             vec, ind = netE._forward_impl(tx)
             y_test = netD._forward_impl(vec, ind)
-            err1 = criterion1(y_test, ty)
+            err1 = criterion1(y_test, ty) / x_dims
             if cirterion2_mult != 0:
                 err2 = criterion2(y_test, ty)
             test_first_losses.append(err1.item())
