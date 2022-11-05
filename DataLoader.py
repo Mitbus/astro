@@ -36,9 +36,9 @@ def data_loader(begin, end):
         time.sleep(15)
         for i in range(begin, end):
             wait = False
-            while not (os.path.isfile(f'train/x_{i}.txt') and os.path.isfile(f'train/y_{i}.txt')):
+            while not (os.path.isfile(f'train/x_{i}.npy') and os.path.isfile(f'train/y_{i}.npy')):
                 if not wait:
-                    print(f'File y_{i}.txt or x_{i}.txt not exists. Waiting...')
+                    print(f'File y_{i}.npy or x_{i}.npy not exists. Waiting...')
                     wait = True
                 time.sleep(5)
             if wait:
