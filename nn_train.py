@@ -1,5 +1,5 @@
-from models.resnet50.Encoder import Encoder
-from models.resnet50.Decoder import Decoder
+from models.resnet_128x128.Encoder import Encoder
+from models.resnet_128x128.Decoder import Decoder
 import torch
 import torch.nn as nn
 import torch.optim as optim

@@ -8,8 +8,8 @@ import numpy as np
 
 batch_size = 1024
 iters = 1000
-shape_x = 256
-shape_y = 256
+shape_x = 128
+shape_y = 128
 
 
 ds = DataSet(['data/HFI_SkyMap_100_2048_R2.02_full.fits'], batch_size=batch_size)
