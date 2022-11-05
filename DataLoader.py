@@ -1,11 +1,13 @@
-from multiprocessing import Queue, Process
-import time
+from multiprocessing import Queue, Process, freeze_support
+mport time
 import os
 import torch
 import numpy as np
-from Config import *
 
 eof = None
+
+if __name__ == '__main__':
+    freeze_support()
 
 def read_images(begin, end):
     for i in range(begin, end):
