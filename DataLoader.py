@@ -23,7 +23,7 @@ def iter_asynchronously(gen_func):
         else:
             yield item
 
-def _data_loader(begin, end):
+def data_loader(begin, end):
     epoch = 0
     total_step = 0
     while True:

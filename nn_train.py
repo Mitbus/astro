@@ -13,7 +13,7 @@ import os
 import wandb
 import LearningRateTest
 import multiprocessing
-from DataLoader import data_loader_async as data_loader
+from DataLoader import data_loader, data_loader_async
 from Config import *
 
 
@@ -32,10 +32,10 @@ def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
         nn.init.xavier_normal_(m.weight.data, gain=nn.init.calculate_gain('relu'))
-        nn.init.constant_(m.bias.data, 0)
+        # nn.init.constant_(m.bias.data, 0)
     elif classname.find('ConvTranspose') != -1:
         nn.init.xavier_normal_(m.weight.data, gain=nn.init.calculate_gain('relu'))
-        nn.init.constant_(m.bias.data, 0)
+        # nn.init.constant_(m.bias.data, 0)
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
@@ -136,7 +136,7 @@ wandb.config = {
 # main training loop
 
 print("Starting Training Loop...")
-data_iter = data_loader(1, max_data)
+data_iter = data_loader_async(1, max_data)
 for x,y,i,i_total, epoch in data_iter:
     if test_start:
         loss_step = 1
