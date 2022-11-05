@@ -10,7 +10,7 @@ class Encoder(nn.Module):
         # loading pretrained nvidia_resnet50
         self.resnet = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
 
-        del self.resnet.layers[4]
+        del self.resnet.layers[3]
         self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.resnet.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False, return_indices=True)
         self.resnet.fc = nn.Linear(in_features=1024, out_features=1000, bias=True)
