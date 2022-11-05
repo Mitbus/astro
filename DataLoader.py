@@ -7,18 +7,30 @@ from Config import *
 
 eof = None
 
-def data_loader_async(begin, end):
-    return iter_asynchronously(data_loader, (begin, end))
+def read_images(begin, end):
+    for i in range(begin, end):
+        wait = False
+        while not (os.path.isfile(f'train/x_{i}.npy') and os.path.isfile(f'train/y_{i}.npy')):
+            if not wait:
+                print(f'File y_{i}.npy or x_{i}.npy not exists. Waiting...')
+                wait = True
+            time.sleep(5)
+        if wait:
+            print('Reading data:', i)
+        xs = np.load(f'train/x_{i}.npy')
+        ys = np.load(f'train/y_{i}.npy')
+        yield xs, ys
 
-def _async_queue_manager(gen_func, args, queue: Queue):
+def _async_queue_manager(gen_func, args, max_qsize, queue: Queue):
     for item in gen_func(*args):
         queue.put(item)
+        while queue.qsize() >= max_qsize:
+            time.sleep(5)
     queue.put(eof)
 
-def iter_asynchronously(gen_func, args):
-    """ Given a generator function, make it asynchonous.  """
+def iter_asynchronously(gen_func, args, max_qsize):
     q = Queue()
-    p = Process(target=_async_queue_manager, args=(gen_func, args, q))
+    p = Process(target=_async_queue_manager, args=(gen_func, args, max_qsize, q))
     p.start()
     while True:
         item = q.get()
@@ -33,18 +45,8 @@ def data_loader(begin, end):
     while True:
         step = 0
         print(f'Epoch: {epoch}     ')
-        time.sleep(15)
-        for i in range(begin, end):
-            wait = False
-            while not (os.path.isfile(f'train/x_{i}.npy') and os.path.isfile(f'train/y_{i}.npy')):
-                if not wait:
-                    print(f'File y_{i}.npy or x_{i}.npy not exists. Waiting...')
-                    wait = True
-                time.sleep(5)
-            if wait:
-                print('Reading data:', i)
-            xs = np.load(f'train/x_{i}.npy')
-            ys = np.load(f'train/y_{i}.npy')
+        time.sleep(5)
+        for xs, ys in iter_asynchronously(read_images, (begin, end), max_qsize):
             for j in range(0, xs.shape[0], batch_size):
                 x = torch.tensor(xs[j:j+batch_size], device=device, dtype=torch.float32)
                 y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)

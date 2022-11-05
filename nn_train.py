@@ -13,7 +13,7 @@ import os
 import wandb
 import LearningRateTest
 import multiprocessing
-from DataLoader import data_loader, data_loader_async
+from DataLoader import data_loader
 from Config import *
 
 
@@ -135,7 +135,7 @@ wandb.config = {
 # main training loop
 
 print("Starting Training Loop...")
-data_iter = data_loader_async(1, max_data)
+data_iter = data_loader(1, max_data)
 for x,y,i,i_total, epoch in data_iter:
     if test_start:
         loss_step = 1
