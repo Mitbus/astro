@@ -1,5 +1,5 @@
 manual_seed = 12
-test_start = False
+test_start = True
 device = "cuda"
 lr = 1e-3
 batch_size = 64
@@ -9,6 +9,6 @@ test_step = 500
 save_step = 2500
 edit_lr_step = 10_000
 lr_mult = 0.75
-cirterion2_mult = 10 # Вклад 2го функционала ошибки
+cirterion2_mult = 1e12 # Вклад 2го функционала ошибки
 max_qsize = 3 # максимальный размер подгружаемых из кеша новых файлов с изображениями
 max_test_error = 1000 # верхняя граница для ошибки при тесте lr
