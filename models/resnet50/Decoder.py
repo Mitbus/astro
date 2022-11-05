@@ -109,7 +109,7 @@ class Decoder(nn.Module):
         #
         x = self.umaxpool(x, resnet_maxpool_indices, output_size=[self.umaxpool_stride * x.shape[2], self.umaxpool_stride * x.shape[3]])
         x = self.relu(x)
-        x = self.conv1T(x)
+        x = self.conv1T(x, output_size=[256, 256])
         x = self.bn1(x)
         return x
     def forward(self, x):
