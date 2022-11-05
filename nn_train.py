@@ -23,6 +23,7 @@ import multiprocessing
 
 wandb.init(project="astro", entity="ozil")
 lr = 1e-3
+batch_size = 16
 max_data = 1000
 inter_size = 1000
 loss_step = 50
@@ -52,16 +53,14 @@ def data_loader(begin, end):
                 time.sleep(5)
             if wait:
                 print('Reading data:', i)
-            with open(f'train/x_{i}.txt') as f:
-                xs = json.loads(f.read())
-            with open(f'train/y_{i}.txt') as f:
-                ys = json.loads(f.read())
-            while len(xs) != 0:
-                x = torch.tensor(xs.pop(), device=device, dtype=torch.float32)
-                y = torch.tensor(ys.pop(), device=device, dtype=torch.float32)
-                noise = torch.normal(mean=0, std=0.5, size=x.shape, device=device, dtype=torch.float32)
-                noise2 = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.9).float()
-                yield x+noise+noise2, y, step, total_step, epoch
+            xs = np.load(f'train/x_{i}.npy')
+            ys = np.load(f'train/y_{i}.npy')
+            for j in range(0, xs.shape[0], batch_size):
+                x = torch.tensor(xs[j:j+batch_size], device=device, dtype=torch.float32)
+                y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)
+                # noise = torch.normal(mean=0, std=0.5, size=x.shape, device=device, dtype=torch.float32)
+                # noise2 = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.9).float()
+                yield x, y, step, total_step, epoch
                 step += 1
                 total_step += 1
         epoch += 1
