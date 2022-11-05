@@ -17,7 +17,7 @@ class Encoder(nn.Module):
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
         x = self.resnet.relu(x)
-        x, resnet_maxpool_indices = self.resnet50.maxpool(x)
+        x, resnet_maxpool_indices = self.resnet.maxpool(x)
         x = self.resnet.layers[0](x)
         x = self.resnet.layers[1](x)
         x = self.resnet.layers[2](x)
