@@ -7,9 +7,6 @@ from Config import *
 
 eof = None
 
-if __name__ == '__main__':
-    freeze_support()
-
 def read_images(begin, end):
     for i in range(begin, end):
         wait = False
@@ -49,7 +46,7 @@ def data_loader(begin, end):
         step = 0
         print(f'Epoch: {epoch}     ')
         time.sleep(5)
-        for xs, ys in iter_asynchronously(read_images, (begin, end), max_qsize):
+        for xs, ys in read_images(begin, end):
             for j in range(0, xs.shape[0], batch_size):
                 x = torch.tensor(xs[j:j+batch_size], device=device, dtype=torch.float32)
                 y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)
