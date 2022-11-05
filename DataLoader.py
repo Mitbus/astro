@@ -8,18 +8,17 @@ from Config import *
 eof = None
 
 def data_loader_async(begin, end):
-    func = lambda : _data_loader(begin, end)
-    return iter_asynchronously(func)
+    return iter_asynchronously(data_loader, (begin, end))
 
-def _async_queue_manager(gen_func, queue: Queue):
-    for item in gen_func():
+def _async_queue_manager(gen_func, args, queue: Queue):
+    for item in gen_func(*args):
         queue.put(item)
     queue.put(eof)
 
-def iter_asynchronously(gen_func):
+def iter_asynchronously(gen_func, args):
     """ Given a generator function, make it asynchonous.  """
     q = Queue()
-    p = Process(target=_async_queue_manager, args=(gen_func, q))
+    p = Process(target=_async_queue_manager, args=(gen_func, args, q))
     p.start()
     while True:
         item = q.get()

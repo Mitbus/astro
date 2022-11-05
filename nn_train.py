@@ -82,7 +82,7 @@ def test():
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4),
         nn.MSELoss(),
         lr_low=1e-6,
-        lr_max=1e-3,
+        lr_max=1e-2,
         mult=1.05
     )
     fig = plt.figure()
