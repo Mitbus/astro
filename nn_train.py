@@ -22,7 +22,6 @@ from Config import *
 random.seed(manual_seed)
 torch.manual_seed(manual_seed)
 wandb.init(project="astro", entity="ozil")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print('Training with', device)
 
 

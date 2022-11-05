@@ -1,5 +1,6 @@
 manual_seed = 12
 test_start = True
+device = "cuda"
 lr = 1e-3
 batch_size = 1
 max_data = 1000 # Количество закешированных файлов
