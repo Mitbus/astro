@@ -1,0 +1,11 @@
+manual_seed = 12
+test_start = True
+lr = 1e-3
+batch_size = 1
+max_data = 1000 # Количество закешированных файлов
+loss_step = 50
+test_step = 500
+save_step = 2500
+edit_lr_step = 10_000
+lr_mult = 0.75
+cirterion2_mult = 1 # Вклад 2го функционала ошибки

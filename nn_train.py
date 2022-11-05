@@ -7,64 +7,23 @@ import random
 import matplotlib.pyplot as plt
 import math
 import numpy as np
-manual_seed = 12
-random.seed(manual_seed)
-torch.manual_seed(manual_seed)
 import json
 import time
 import os
 import wandb
-import test_lr
+import LearningRateTest
 import multiprocessing
+from DataLoader import data_loader_async as data_loader
+from Config import *
 
 
+# init
 
-# config
-
+random.seed(manual_seed)
+torch.manual_seed(manual_seed)
 wandb.init(project="astro", entity="ozil")
-lr = 1e-3
-batch_size = 16
-max_data = 1000
-inter_size = 1000
-loss_step = 50
-test_step = 500
-save_step = 2500
-edit_lr_step = 10_000
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print('Training with', device)
-
-
-
-# dataset
-
-def data_loader(begin, end):
-    epoch = 0
-    total_step = 0
-    while True:
-        step = 0
-        print(f'Epoch: {epoch}     ')
-        time.sleep(15)
-        for i in range(begin, end):
-            wait = False
-            while not (os.path.isfile(f'train/x_{i}.txt') and os.path.isfile(f'train/y_{i}.txt')):
-                if not wait:
-                    print(f'File y_{i}.txt or x_{i}.txt not exists. Waiting...')
-                    wait = True
-                time.sleep(5)
-            if wait:
-                print('Reading data:', i)
-            xs = np.load(f'train/x_{i}.npy')
-            ys = np.load(f'train/y_{i}.npy')
-            for j in range(0, xs.shape[0], batch_size):
-                x = torch.tensor(xs[j:j+batch_size], device=device, dtype=torch.float32)
-                y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)
-                # noise = torch.normal(mean=0, std=0.5, size=x.shape, device=device, dtype=torch.float32)
-                # noise2 = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.9).float()
-                yield x, y, step, total_step, epoch
-                step += 1
-                total_step += 1
-        epoch += 1
-
 
 
 # build model
@@ -88,10 +47,10 @@ def weights_init(m):
 # netE = torch.load('tmp/m4_encoder_19_0')
 # netD = torch.load('tmp/m4_decoder_19_0')
 
-netE = Encoder(dim=inter_size).to(device)
+netE = Encoder().to(device)
 # netE.apply(weights_init)
 print(netE)
-netD = Decoder(dim=inter_size).to(device)
+netD = Decoder().to(device)
 netD.apply(weights_init)
 print(netD)
 
@@ -118,7 +77,7 @@ def test():
         return y_smooth
 
     model = Model(netE, netD)
-    data = test_lr.test(
+    data = LearningRateTest.test(
         model,
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4),
@@ -145,12 +104,13 @@ test()
 # test model before start
 
 criterion1 = nn.MSELoss()
-# criterion2 = nn.KLDivLoss()
-# alpha = 5
+if cirterion2_mult != 0:
+    criterion2 = nn.KLDivLoss()
 optimizerE = optim.Adam(netE.parameters(), lr=lr, weight_decay=5e-4)
 optimizerD = optim.Adam(netD.parameters(), lr=lr, weight_decay=5e-4)
 first_name = str(criterion1.__class__).split(".")[-1].split("'")[0]
-# second_name = str(criterion2.__class__).split(".")[-1].split("'")[0]
+if cirterion2_mult != 0:
+    second_name = str(criterion2.__class__).split(".")[-1].split("'")[0]
 
 
 print('Processing test data...')
@@ -178,10 +138,11 @@ wandb.config = {
 print("Starting Training Loop...")
 data_iter = data_loader(1, max_data)
 for x,y,i,i_total, epoch in data_iter:
-    loss_step = 1
-    test_step = 1
-    if i > 10:
-        break
+    if test_start:
+        loss_step = 1
+        test_step = 1
+        if i > 10:
+            break
         
     netE.zero_grad()
     netD.zero_grad()
@@ -189,9 +150,12 @@ for x,y,i,i_total, epoch in data_iter:
     vec, ind = netE._forward_impl(x)
     y_pred = netD._forward_impl(vec, ind)
 
-    err = criterion1(y_pred, y)
-    # e2 = criterion2(y_pred, y)
-    # err = e1*alpha + e2
+    if cirterion2_mult != 0:
+        e1 = criterion1(y_pred, y)
+        e2 = criterion2(y_pred, y)
+        err = e1 + e2*cirterion2_mult
+    else:
+        err = criterion1(y_pred, y)
     err.backward()
     losses.append(err.item())
 
@@ -209,13 +173,16 @@ for x,y,i,i_total, epoch in data_iter:
             vec, ind = netE._forward_impl(tx)
             y_test = netD._forward_impl(vec, ind)
             err1 = criterion1(y_test, ty)
-            # err2 = criterion2(y_test, ty)
+            if cirterion2_mult != 0:
+                err2 = criterion2(y_test, ty)
             test_first_losses.append(err1.item())
-            # test_second_losses.append(err2.item())
-            # test_total_losses.append((err1*alpha+err2).item())
+            if cirterion2_mult != 0:
+                test_second_losses.append(err2.item())
+                test_total_losses.append((err1 + err2 * cirterion2_mult).item())
         wandb_log[f'test_{first_name}_losses'] = test_first_losses[-1]
-        # wandb_log[f'test_{second_name}_losses'] = test_second_losses[-1]
-        # wandb_log['test_total_losses'] = test_total_losses[-1]
+        if cirterion2_mult != 0:
+            wandb_log[f'test_{second_name}_losses'] = test_second_losses[-1]
+            wandb_log['test_total_losses'] = test_total_losses[-1]
         print('step', i, 'total', i_total, wandb_log)
     if i % save_step == 0:
         torch.save(netE, f'tmp/encoder_{epoch}_{i}')
@@ -230,13 +197,14 @@ for x,y,i,i_total, epoch in data_iter:
         plt.plot(list(range(len(test_first_losses))), test_first_losses)
         plt.title(f'test_{first_name}_losses')
 
-        # fig.add_subplot(2, 2, 3)  
-        # plt.plot(list(range(len(test_second_losses))), test_second_losses)
-        # plt.title(f'test_{second_name}_losses')
+        if cirterion2_mult != 0:
+            fig.add_subplot(2, 2, 3)
+            plt.plot(list(range(len(test_second_losses))), test_second_losses)
+            plt.title(f'test_{second_name}_losses')
 
-        # fig.add_subplot(2, 2, 4)  
-        # plt.plot(list(range(len(test_total_losses))), test_total_losses)
-        # plt.title('test_total_losses')
+            fig.add_subplot(2, 2, 4)
+            plt.plot(list(range(len(test_total_losses))), test_total_losses)
+            plt.title('test_total_losses')
 
         fig.savefig(f'tmp/report_{epoch}_{i}.png')
         plt.close(fig)
@@ -244,7 +212,7 @@ for x,y,i,i_total, epoch in data_iter:
         wandb_log['lr'] = lr
         cur_median_err = np.median(ma_losses)
         if last_lr_median_err * 0.95 <= cur_median_err:
-            lr = lr / 2
+            lr = lr * lr_mult
             print('new lr:', lr, 'medians:', last_lr_median_err, cur_median_err)
             optimizerE = optim.Adam(netE.parameters(), lr=lr, weight_decay=5e-4)
             optimizerD = optim.Adam(netD.parameters(), lr=lr, weight_decay=5e-4)
