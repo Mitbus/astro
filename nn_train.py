@@ -108,9 +108,10 @@ def test():
             self.decoder = decoder
 
         def forward(self, input):
-            return self.decoder._forward_impl(*self.encoder._forward_impl(input))
+            y, ind = self.encoder._forward_impl(input)
+            return self.decoder._forward_impl(y, ind)
     def data_iterator():
-        for x,y,i,e in data_loader(0, max_data):
+        for x, y, step, total_step, epoch in data_loader(0, max_data):
             yield x,y
     def smooth(y, box_pts):
         box = np.ones(box_pts)/box_pts
@@ -123,8 +124,8 @@ def test():
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4),
         nn.MSELoss(),
-        lr_low=1e-5,
-        lr_max=0.013,
+        lr_low=1e-6,
+        lr_max=1e-3,
         mult=1.05
     )
     fig = plt.figure()
@@ -137,8 +138,8 @@ def test():
     for i in range(len(smooth_loss)):
         wandb.log({'loss': smooth_loss[i], 'lr': data[i,0]})
 
-# print('Testing best learning rate')
-# test()
+print('Testing best learning rate')
+test()
 
 
 
@@ -164,8 +165,8 @@ test_total_losses = []
 last_lr_median_err = np.inf
 
 print('Testing nn topology...')
-vec = netE(tx)
-y_pred = netD(vec)
+vec, ind = netE._forward_impl(tx)
+y_pred = netD._forward_impl(vec, ind)
 wandb.config = {
   "learning_rate": lr,
   "batch_size": tx.shape[0]
@@ -186,8 +187,8 @@ for x,y,i,i_total, epoch in data_iter:
     netE.zero_grad()
     netD.zero_grad()
 
-    vec = netE._forward_impl(x)
-    y_pred = netD._forward_impl(*vec)
+    vec, ind = netE._forward_impl(x)
+    y_pred = netD._forward_impl(vec, ind)
 
     err = criterion1(y_pred, y)
     # e2 = criterion2(y_pred, y)
@@ -206,7 +207,8 @@ for x,y,i,i_total, epoch in data_iter:
         wandb_log["train_losses"] = ma_losses[-1]
     if i % test_step == 0:
         with torch.no_grad():
-            y_test = netD._forward_impl(*netE._forward_impl(tx))
+            vec, ind = netE._forward_impl(tx)
+            y_test = netD._forward_impl(vec, ind)
             err1 = criterion1(y_test, ty)
             # err2 = criterion2(y_test, ty)
             test_first_losses.append(err1.item())

@@ -11,7 +11,7 @@ def convT1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.ConvTranspo
     return nn.ConvTranspose2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 def downsample(in_planes: int, out_planes: int, stride: int = 1):
-    return [convT1x1(in_planes, out_planes, stride), nn.BatchNorm2d(out_planes)]
+    return nn.Sequential(convT1x1(in_planes, out_planes, stride), nn.BatchNorm2d(out_planes))
 
 class RBottleneck(nn.Module):
     # ResNet V1.5 Bottleneck changed by replacing Conv2d with ConvTranspose2d
