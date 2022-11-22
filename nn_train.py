@@ -80,10 +80,10 @@ def test():
         model,
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4),
-        nn.MSELoss(),
-        lr_low=1e-9,
-        lr_max=1e-1,
-        mult=1.05
+        nn.TripletMarginWithDistanceLoss(),
+        lr_low=1e-12,
+        lr_max=1e8,
+        mult=1.1
     )
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -97,17 +97,17 @@ def test():
 
 if test_start:
     print('Testing best learning rate')
-    test()
+    # test()
 
 
 
 # test model before start
 
-criterion1 = nn.MSELoss()
+criterion1 = nn.HuberLoss(reduction='mean')
 if cirterion2_mult != 0:
-    criterion2 = nn.KLDivLoss()
-optimizerE = optim.Adam(netE.parameters(), lr=lr, weight_decay=5e-4)
-optimizerD = optim.Adam(netD.parameters(), lr=lr, weight_decay=5e-4)
+    criterion2 = nn.KLDivLoss(reduction='batchmean')
+optimizerE = optim.Adam(netE.parameters(), lr=lr, weight_decay=5e-4, betas=(0.5, 0.999))
+optimizerD = optim.Adam(netD.parameters(), lr=lr, weight_decay=5e-4, betas=(0.5, 0.999))
 first_name = str(criterion1.__class__).split(".")[-1].split("'")[0]
 if cirterion2_mult != 0:
     second_name = str(criterion2.__class__).split(".")[-1].split("'")[0]
@@ -135,6 +135,7 @@ wandb.config = {
 
 # main training loop
 
+# y_old = ty
 print("Starting Training Loop...")
 data_iter = data_loader(1, max_data)
 for x,y,i,i_total, epoch in data_iter:
@@ -151,9 +152,7 @@ for x,y,i,i_total, epoch in data_iter:
     y_pred = netD._forward_impl(vec, ind)
 
     if cirterion2_mult != 0:
-        e1 = criterion1(y_pred, y)
-        e2 = criterion2(y_pred, y)
-        err = e1 + e2*cirterion2_mult
+        err = criterion1(y_pred, y) + criterion2(y_pred, y)*cirterion2_mult
     else:
         err = criterion1(y_pred, y)
     err.backward()
@@ -219,3 +218,4 @@ for x,y,i,i_total, epoch in data_iter:
         last_lr_median_err = cur_median_err
     if (epoch > 0 or i > 100) and len(wandb_log) != 0:
         wandb.log(wandb_log)
+    # y_old = y
