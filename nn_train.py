@@ -1,5 +1,5 @@
-from models.resnet_128x128.Encoder import Encoder
-from models.resnet_128x128.Decoder import Decoder
+from models.vgg_32.Encoder import Encoder
+from models.vgg_32.Decoder import Decoder
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -47,7 +47,7 @@ def weights_init(m):
 # netD = torch.load('tmp/m4_decoder_19_0')
 
 netE = Encoder().to(device)
-# netE.apply(weights_init)
+netE.apply(weights_init)
 print(netE)
 netD = Decoder().to(device)
 netD.apply(weights_init)
@@ -65,8 +65,10 @@ def test():
             self.decoder = decoder
 
         def forward(self, input):
-            y, ind = self.encoder._forward_impl(input)
-            return self.decoder._forward_impl(y, ind)
+            # y, ind = self.encoder._forward_impl(input)
+            # return self.decoder._forward_impl(y, ind)
+            vec = self.encoder(input)
+            return self.decoder(vec)
     def data_iterator():
         for x, y, step, total_step, epoch in data_loader(0, max_data):
             yield x,y
@@ -80,7 +82,7 @@ def test():
         model,
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4),
-        nn.TripletMarginWithDistanceLoss(),
+        nn.HuberLoss(),
         lr_low=1e-12,
         lr_max=1e8,
         mult=1.1
@@ -103,9 +105,9 @@ if test_start:
 
 # test model before start
 
-criterion1 = nn.HuberLoss(reduction='mean')
+criterion1 = nn.HuberLoss()
 if cirterion2_mult != 0:
-    criterion2 = nn.KLDivLoss(reduction='batchmean')
+    criterion2 = nn.KLDivLoss()
 optimizerE = optim.Adam(netE.parameters(), lr=lr, weight_decay=5e-4, betas=(0.5, 0.999))
 optimizerD = optim.Adam(netD.parameters(), lr=lr, weight_decay=5e-4, betas=(0.5, 0.999))
 first_name = str(criterion1.__class__).split(".")[-1].split("'")[0]
@@ -124,8 +126,9 @@ test_total_losses = []
 last_lr_median_err = np.inf
 
 print('Testing nn topology...')
-vec, ind = netE._forward_impl(tx)
-y_pred = netD._forward_impl(vec, ind)
+# vec, ind = netE._forward_impl(tx)
+# y_pred = netD._forward_impl(vec, ind)
+y_pred = netD(netE(tx))
 wandb.config = {
   "learning_rate": lr,
   "batch_size": tx.shape[0]
@@ -148,8 +151,10 @@ for x,y,i,i_total, epoch in data_iter:
     netE.zero_grad()
     netD.zero_grad()
 
-    vec, ind = netE._forward_impl(x)
-    y_pred = netD._forward_impl(vec, ind)
+    # vec, ind = netE._forward_impl(x)
+    # y_pred = netD._forward_impl(vec, ind)
+    vec = netE(x)
+    y_pred = netD(vec)
 
     if cirterion2_mult != 0:
         err = criterion1(y_pred, y) + criterion2(y_pred, y)*cirterion2_mult
@@ -169,8 +174,10 @@ for x,y,i,i_total, epoch in data_iter:
         wandb_log["train_losses"] = ma_losses[-1]
     if i % test_step == 0:
         with torch.no_grad():
-            vec, ind = netE._forward_impl(tx)
-            y_test = netD._forward_impl(vec, ind)
+            # vec, ind = netE._forward_impl(tx)
+            # y_test = netD._forward_impl(vec, ind)
+            vec = netE(tx)
+            y_test = netD(vec)
             err1 = criterion1(y_test, ty)
             if cirterion2_mult != 0:
                 err2 = criterion2(y_test, ty)

@@ -51,12 +51,12 @@ class Encoder(nn.Module):
             self.conv_block(base_channels*2, base_channels*2),
             self.maxpool_block(base_channels*2, base_channels*2)
         )
-        # base_channels *= 2
-        # layer7 = nn.Sequential(
-        #     self.conv_block(base_channels, base_channels),
-        #     self.conv_block(base_channels, base_channels),
-        #     self.maxpool_block(base_channels, base_channels)
-        # )
+        base_channels *= 2
+        layer7 = nn.Sequential(
+            self.conv_block(base_channels, base_channels),
+            self.conv_block(base_channels, base_channels),
+            self.maxpool_block(base_channels, base_channels)
+        )
 
         self.main = nn.Sequential(
             layer1,
@@ -70,9 +70,10 @@ class Encoder(nn.Module):
             layer5,
             nn.Dropout(p=P, inplace=False),
             layer6,
-            # nn.Dropout(p=P, inplace=False),
-            # layer7
+            nn.Dropout(p=P, inplace=False),
+            layer7
         )
+        base_channels = 256
         self.linear = nn.Sequential(
             self.linear_block(4*base_channels, 4*base_channels),
             self.linear_block(4*base_channels, 4*base_channels),

@@ -12,8 +12,8 @@ def test(model, data_iter, optimezer, criterion, lr_low=1e-6, lr_max=1e-1, mult=
         model.zero_grad()
         y_hat = model(x)
 
-        err = criterion(y_hat, y, y_old)
-        y_old = y
+        err = criterion(y_hat, y)
+        # y_old = y
         err.backward()
         item = err.item()
         if item > max_test_error:
