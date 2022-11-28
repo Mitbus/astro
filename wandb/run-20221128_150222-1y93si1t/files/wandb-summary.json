@@ -1,0 +1,1 @@
+{"train_losses": -0.05264230817556381, "_timestamp": 1669647851.7123954, "_runtime": 10909.668477535248, "_step": 675, "test_HuberLoss_losses": 0.06776317954063416, "test_KLDivLoss_losses": -0.4370049238204956, "test_total_losses": -0.019637808203697205, "lr": 1e-05}

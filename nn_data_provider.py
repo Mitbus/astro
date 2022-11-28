@@ -17,6 +17,11 @@ u = np.array([np.mean(d.wmap) for d in ds.m])
 # TODO: move to DataMap
 def normalize_batch(x, y, s = 0.00012398179470333063,  u = 4.6874553e-05):
     # usage StandardScaler
+    # Reshape s, u with constants for each DataSet
+    if type(u) != float:
+        u = u.reshape([7,1,1])
+    if type(s) != float:
+        s = s.reshape([7,1,1])
     return (x - u) / s, (y - u) / s
 
 def get_data():
