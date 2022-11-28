@@ -24,7 +24,7 @@ class DataSet:
         """returns X, y"""
         phi_deg = random.random() * 360
         theta_deg = (random.random() - 0.5) * 180
-        sx = Sample(2, phi_deg, theta_deg)
+        sx = Sample(1, phi_deg, theta_deg)
         sy = Sample(1, phi_deg, theta_deg)
         xs = [self.x_proj(i, sx, shape=shape_x) for i in range(len(self.m))]
         ys = [self.y_proj(i, sy, smooth_deg=smooth_deg, shape=shape_y) for i in range(len(self.m))]

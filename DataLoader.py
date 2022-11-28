@@ -39,7 +39,7 @@ def iter_asynchronously(gen_func, args, max_qsize):
         else:
             yield item
 
-def data_loader(begin, end):
+def data_loader(begin, end, noise=False):
     epoch = 0
     total_step = 0
     while True:
@@ -52,7 +52,11 @@ def data_loader(begin, end):
                 y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)
                 # noise = torch.normal(mean=0, std=0.5, size=x.shape, device=device, dtype=torch.float32)
                 # noise2 = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.9).float()
-                yield x, y, step, total_step, epoch
+                if noise:
+                    mask = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.6).float()
+                    yield x * mask, y, step, total_step, epoch
+                else:
+                    yield x, y, step, total_step, epoch
                 step += 1
                 total_step += 1
         epoch += 1
