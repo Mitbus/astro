@@ -140,7 +140,7 @@ wandb.config = {
 
 # y_old = ty
 print("Starting Training Loop...")
-data_iter = data_loader(1, max_data)
+data_iter = data_loader(1, max_data, noise=True)
 for x,y,i,i_total, epoch in data_iter:
     if test_start:
         loss_step = 1
