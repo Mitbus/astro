@@ -18,18 +18,15 @@ import wandb
 import LearningRateTest
 
 
+max_cached = 1000
 batch_size = 16
 test_start = False
 lr = 1e-5
-deg_x = 8
-deg_y = 7
-shape_x = 2**deg_x
-shape_y = 2**deg_y
 beta1 = 0.5
-inter_size = 500
-loss_step = 10
-test_step = 100
-save_step = 1000
+inter_size = 1000
+loss_step = 50
+test_step = 500
+save_step = 5000
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print('Training with', device)
 wandb.init(project="astro", entity="ozil")
@@ -42,18 +39,17 @@ def data_loader(begin, end):
         print(f'Epoch: {epoch}     ')
         for i in range(begin, end):
             wait = False
-            while not (os.path.isfile(f'train/x_{i}.npy') and os.path.isfile(f'train/y_{i}.npy')):
+            while not os.path.isfile(f'train/xy_{i}.npy'):
                 if not wait:
-                    print(f'File y_{i}.npy or x_{i}.npy not exists. Waiting...')
+                    print(f'File xy_{i}.npy not exists. Waiting...')
                     wait = True
                 time.sleep(5)
             if wait:
                 print('Reading data:', i)
-            xs = np.load(f'train/x_{i}.npy')
-            ys = np.load(f'train/y_{i}.npy')
+            xys = np.load(f'train/xy_{i}.npy')
             for j in range(0, xs.shape[0], batch_size):
-                x = torch.tensor(xs[j:j+batch_size], device=device, dtype=torch.float32)
-                y = torch.tensor(ys[j:j+batch_size], device=device, dtype=torch.float32)
+                x = torch.tensor(xys[j:j+batch_size], device=device, dtype=torch.float32)
+                y = torch.tensor(xys[j:j+batch_size], device=device, dtype=torch.float32)
                 mask = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.8).float()
                 shift = torch.normal(mean=0, std=0.01, size=x.shape, device=device, dtype=torch.float32)
                 yield (x + shift) * mask, y, step, epoch
@@ -77,15 +73,15 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-netE = torch.load('tmp/encoder_0_5000')
-netD = torch.load('tmp/decoder_0_5000')
+# netE = torch.load('tmp/encoder_0_5000')
+# netD = torch.load('tmp/decoder_0_5000')
 
-# netE = Encoder(dim=inter_size).to(device)
-# netE.apply(weights_init)
-# print(netE)
-# netD = Decoder(dim=inter_size).to(device)
-# netD.apply(weights_init)
-# print(netD)
+netE = Encoder(dim=inter_size, in_channels=7).to(device)
+netE.apply(weights_init)
+print(netE)
+netD = Decoder(dim=inter_size, out_channels=7).to(device)
+netD.apply(weights_init)
+print(netD)
 
 # test lr
 
@@ -98,8 +94,6 @@ def test():
             self.decoder = decoder
 
         def forward(self, input):
-            # y, ind = self.encoder._forward_impl(input)
-            # return self.decoder._forward_impl(y, ind)
             vec = self.encoder(input)
             return self.decoder(vec)
     def data_iterator():
@@ -112,13 +106,13 @@ def test():
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-3),
         nn.HuberLoss(),
-        lr_low=1e-6,
+        lr_low=1e-8,
         lr_max=1e3,
         mult=1.1
     )
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    smooth_loss = data[:,1] #smooth(data[:,1],15)
+    smooth_loss = data[:,1]
     ax.plot(data[:,0], smooth_loss)
     ax.set_xscale('log')
     fig.savefig(f'test_lr.png')
@@ -155,7 +149,7 @@ vec = netE(tx)
 y_pred = netD(vec)
 
 print("Starting Training Loop...")
-for x,y, i, epoch in data_loader(1, 1000):
+for x,y, i, epoch in data_loader(1, max_cached):
     
     netE.zero_grad()
     netD.zero_grad()
@@ -190,8 +184,6 @@ for x,y, i, epoch in data_loader(1, 1000):
         
         print(f'step {i} test {first_name}:', test_first_losses[-1], f'\t test {second_name}:', test_second_losses[-1], '\t test total:', test_total_losses[-1])
     if i % save_step == 0:
-        # alpha = - e2.item() / e1.item()
-        # print(f'alpha set to {alpha}')
         torch.save(netE, f'tmp/encoder_{epoch}_{i}')
         torch.save(netD, f'tmp/decoder_{epoch}_{i}')
 

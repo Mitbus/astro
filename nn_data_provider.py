@@ -3,27 +3,27 @@ import numpy as np
 
 
 batch_size = 1024
-iters = 1000
-shape_x = 256
+iters = 2000
+shape_x = 128
 shape_y = 128
 
 
 ds = DataSet('data/HFI_SkyMap_100_2048_R2.02_full.fits', batch_size=batch_size)
 
-def normalize_batch(x, y):
+def normalize_batch(xy):
     # usage StandardScaler
+    # TODO:  find s, u for each map
     s = 0.00012398179470333063
     u = 4.6874553e-05
-    return (x - u) / s, (y - u) / s
+    return (xy - u) / s
 
 def get_data():
-    tx, ty = ds.get_batch(smooth_deg=0.15, with_samples=False, shape_x=shape_x, shape_y=shape_y)
-    tx, ty = normalize_batch(tx, ty)
-    return tx, ty
+    txy = ds.get_batch(smooth_deg=0.15, with_samples=False, shape_x=shape_x, shape_y=shape_y)[1]
+    txy = normalize_batch(txy)
+    return txy
 
 for i in range(0, iters):
     print(f'{i}/{iters}', end='\r')
-    x, y = get_data()
+    xy = get_data()
 
-    np.save(f'train/x_{i}', np.array(x, dtype=np.float32))
-    np.save(f'train/y_{i}', np.array(y, dtype=np.float32))
+    np.save(f'train/xy_{i}', np.array(xy, dtype=np.float32))

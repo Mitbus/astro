@@ -12,7 +12,7 @@ class DataSet:
         self.m = DataMap(path)
         self.wmap_min = self.m.wmap.min()
         self.wmap_max = self.m.wmap.max()
-        self.m.set_line(NOT_SET, width=5)
+        self.m.set_line(NOT_SET, width=8)
         self.batch_size = batch_size
             
     def x_proj(self, sample, shape=300):
@@ -27,11 +27,12 @@ class DataSet:
         """returns X, y"""
         phi_deg = random.random() * 360
         theta_deg = (random.random() - 0.5) * 180
-        sx = Sample(2, phi_deg, theta_deg)
+        sx = Sample(1, phi_deg, theta_deg)
         sy = Sample(1, phi_deg, theta_deg)
         x = self.x_proj(sx, shape=shape_x)
         y = self.y_proj(sy, smooth_deg=smooth_deg, shape=shape_y)
-        if np.all(x != NOT_SET):
+        tmp = np.array(x)
+        if len(tmp[tmp == NOT_SET]) == 0:
             if with_samples:
                 return [x], [y], sx, sy
             else:

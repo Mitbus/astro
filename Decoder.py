@@ -7,52 +7,21 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class Decoder(nn.Module):
-    def __init__(self, dim=200, deg_2=7):
+    def __init__(self, dim=1000, out_channels=1):
         super(Decoder, self).__init__()
         P = 0.5
         
         self.linear = nn.Sequential(
-            self.linear_block(dim, 1024),
-            self.linear_block(1024, 2048),
-            self.linear_block(2048, 2048),
-            self.linear_block(2048, 2048)
+            self.linear_block(dim, 4096),
+            self.linear_block(4096, 4096),
+            self.linear_block(4096, 4*4*512)
         )
 
-        base_channel = 128
-        layer1 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, base_channel // 2),
-            self.rmaxpool_block(base_channel // 2, base_channel // 2)
-        )
-        base_channel = base_channel // 2
-        layer2 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, base_channel // 2),
-            self.rmaxpool_block(base_channel // 2, base_channel // 2)
-        )
-        base_channel = base_channel // 2
-        layer3 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, base_channel // 2),
-            self.rmaxpool_block(base_channel // 2, base_channel // 2)
-        )
-        base_channel = base_channel // 2
-        layer4 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, base_channel // 2),
-            self.rmaxpool_block(base_channel // 2, base_channel // 2)
-        )
-        base_channel = base_channel // 2
-        layer5 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, base_channel // 2),
-            self.rmaxpool_block(base_channel // 2, base_channel // 2)
-        )
-        base_channel = base_channel // 2
-        layer6 = nn.Sequential(
-            self.rconv_block(base_channel, base_channel // 2),
-            self.rconv_block(base_channel // 2, 1),
-        )
+        layer1 = self.create_layer(512, 512, has_third=True)  # 4 -> 8
+        layer2 = self.create_layer(512, 256, has_third=True)  # 8 -> 16
+        layer3 = self.create_layer(256, 128, has_third=True)  # 16 -> 32
+        layer4 = self.create_layer(128, 64)  # 32 -> 64
+        layer5 = self.create_layer(64, out_channels)  # 64 -> 128
 
         self.main = nn.Sequential(
             layer1,
@@ -63,10 +32,21 @@ class Decoder(nn.Module):
             nn.Dropout(p=P, inplace=False),
             layer4,
             nn.Dropout(p=P, inplace=False),
-            layer5,
-            nn.Dropout(p=P, inplace=False),
-            layer6
+            layer5
         )
+
+    def create_layer(self, base_channels_in, base_channels_out, has_third=False):
+        if has_third:
+            return nn.Sequential(
+                self.rmaxpool_block(base_channels_in, base_channels_in),
+                self.rconv_block(base_channels_in, base_channels_in),
+                self.rconv_block(base_channels_in, base_channels_out)
+            )
+        else:
+            return nn.Sequential(
+                self.rmaxpool_block(base_channels_in, base_channels_in),
+                self.rconv_block(base_channels_in, base_channels_out)
+            )
         
     def rconv_block(self, input, output):
         return nn.Sequential(
@@ -89,5 +69,5 @@ class Decoder(nn.Module):
         )
 
     def forward(self, input):
-        x = self.linear(input).view(input.shape[0], 128, 4, 4)
+        x = self.linear(input).view(input.shape[0], 512, 4, 4)
         return self.main(x)

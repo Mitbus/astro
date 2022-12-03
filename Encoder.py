@@ -8,55 +8,16 @@ import torch.optim as optim
 import math
 
 class Encoder(nn.Module):
-    def __init__(self, dim=200):
+    def __init__(self, dim=1000, in_channels=1):
+        # refereces for VGG19: https://arxiv.org/pdf/1409.1556v6.pdf
         super(Encoder, self).__init__()
         P = 0.5
 
-        base_channels = 32
-        layer1 = nn.Sequential(
-            self.conv_block(1, base_channels),
-            self.conv_block(base_channels, base_channels),
-            self.maxpool_block(base_channels, base_channels)
-        )
-        layer2 = nn.Sequential(
-            self.conv_block(base_channels, base_channels*2),
-            self.conv_block(base_channels*2, base_channels*2),
-            self.maxpool_block(base_channels*2, base_channels*2)
-        )
-
-        base_channels *= 2
-        layer3 = nn.Sequential(
-            self.conv_block(base_channels, base_channels*2),
-            self.conv_block(base_channels*2, base_channels*2),
-            self.maxpool_block(base_channels*2, base_channels*2)
-        )
-
-        base_channels *= 2
-        layer4 = nn.Sequential(
-            self.conv_block(base_channels, base_channels*2),
-            self.conv_block(base_channels*2, base_channels*2),
-            self.maxpool_block(base_channels*2, base_channels*2)
-        )
-
-        base_channels *= 2
-        layer5 = nn.Sequential(
-            self.conv_block(base_channels, base_channels*2),
-            self.conv_block(base_channels*2, base_channels*2),
-            self.maxpool_block(base_channels*2, base_channels*2)
-        )
-
-        base_channels *= 2
-        layer6 = nn.Sequential(
-            self.conv_block(base_channels, base_channels*2),
-            self.conv_block(base_channels*2, base_channels*2),
-            self.maxpool_block(base_channels*2, base_channels*2)
-        )
-        base_channels *= 2
-        layer7 = nn.Sequential(
-            self.conv_block(base_channels, base_channels),
-            self.conv_block(base_channels, base_channels),
-            self.maxpool_block(base_channels, base_channels)
-        )
+        layer1 = self.create_layer(in_channels, 64)  # 128 -> 64
+        layer2 = self.create_layer(64, 128)  # 64 -> 32
+        layer3 = self.create_layer(128, 256, has_third=True)  # 32 -> 16
+        layer4 = self.create_layer(256, 512, has_third=True)   # 16 -> 8
+        layer5 = self.create_layer(512, 512, has_third=True)  # 8 -> 4
 
         self.main = nn.Sequential(
             layer1,
@@ -68,17 +29,25 @@ class Encoder(nn.Module):
             layer4,
             nn.Dropout(p=P, inplace=False),
             layer5,
-            nn.Dropout(p=P, inplace=False),
-            layer6,
-            nn.Dropout(p=P, inplace=False),
-            layer7
         )
         self.linear = nn.Sequential(
-            self.linear_block(4*base_channels, 4*base_channels),
-            self.linear_block(4*base_channels, 4*base_channels),
-            self.linear_block(4*base_channels, 2*base_channels),
-            self.linear_block(2*base_channels, dim, activation=nn.Tanh())
+            self.linear_block(4*4*512, 4096),
+            self.linear_block(4096, 4096),
+            self.linear_block(4096, dim, activation=nn.Tanh())
         )
+
+    def create_layer(self, base_channels_in, base_channels_out, has_third=False):
+        if has_third:
+            return nn.Sequential(
+                self.conv_block(base_channels_in, base_channels_out),
+                self.conv_block(base_channels_out, base_channels_out),
+                self.maxpool_block(base_channels_out, base_channels_out)
+            )
+        else:
+            return nn.Sequential(
+                self.conv_block(base_channels_in, base_channels_out),
+                self.maxpool_block(base_channels_out, base_channels_out)
+            )
 
     def conv_block(self, input, output):
         return nn.Sequential(
