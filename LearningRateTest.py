@@ -1,6 +1,12 @@
 import numpy as np
+import torch.nn as nn
 
-def test(model, data_iter, optimezer, criterion, lr_low=1e-6, lr_max=1e-1, mult=1.1):
+
+criterion1 = nn.HuberLoss()
+criterion2 = nn.KLDivLoss()
+alpha = 5
+
+def test(model, data_iter, optimezer, lr_low=1e-6, lr_max=1e-1, mult=1.1):
     errors = []
     lr = lr_low
     for x,y in data_iter:
@@ -10,7 +16,7 @@ def test(model, data_iter, optimezer, criterion, lr_low=1e-6, lr_max=1e-1, mult=
         model.zero_grad()
         y_hat = model(x)
 
-        err = criterion(y_hat, y)
+        err = criterion1(y_hat, y)*alpha + criterion2(y_hat, y)
         err.backward()
         item = err.item()
         if item > 1e10:

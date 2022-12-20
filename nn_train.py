@@ -5,23 +5,22 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 import matplotlib.pyplot as plt
-from scipy import signal
 import math
 import numpy as np
 manual_seed = 12
 random.seed(manual_seed)
 torch.manual_seed(manual_seed)
-import json
 import time
 import os
 import wandb
 import LearningRateTest
 
 
-max_cached = 1000
-batch_size = 16
+max_cached = 2000
+batch_size = 32
 test_start = False
-lr = 1e-5
+lr = 5e-4
+lr_base = 5e-5
 beta1 = 0.5
 inter_size = 1000
 loss_step = 50
@@ -39,19 +38,21 @@ def data_loader(begin, end):
         print(f'Epoch: {epoch}     ')
         for i in range(begin, end):
             wait = False
-            while not os.path.isfile(f'train/xy_{i}.npy'):
+            while not os.path.isfile(f'train/xy_{i}.npz'):
                 if not wait:
-                    print(f'File xy_{i}.npy not exists. Waiting...')
+                    print(f'File xy_{i}.npz not exists. Waiting...')
                     wait = True
                 time.sleep(5)
             if wait:
+                # if file half-exists and writing just now
+                time.sleep(5)
                 print('Reading data:', i)
-            xys = np.load(f'train/xy_{i}.npy')
-            for j in range(0, xs.shape[0], batch_size):
+            xys = np.load(f'train/xy_{i}.npz')['data']
+            for j in range(0, xys.shape[0], batch_size):
                 x = torch.tensor(xys[j:j+batch_size], device=device, dtype=torch.float32)
-                y = torch.tensor(xys[j:j+batch_size], device=device, dtype=torch.float32)
                 mask = (torch.rand(size=x.shape, device=device, dtype=torch.float32) < 0.8).float()
-                shift = torch.normal(mean=0, std=0.01, size=x.shape, device=device, dtype=torch.float32)
+                shift = torch.normal(mean=0, std=0.1, size=x.shape, device=device, dtype=torch.float32)
+                y = torch.tensor(xys[j:j+batch_size], device=device, dtype=torch.float32)
                 yield (x + shift) * mask, y, step, epoch
                 step += 1
         epoch += 1
@@ -73,8 +74,8 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-# netE = torch.load('tmp/encoder_0_5000')
-# netD = torch.load('tmp/decoder_0_5000')
+# netE = torch.load('vgg1/encoder_12_40000')
+# netD = torch.load('vgg1/decoder_12_40000')
 
 netE = Encoder(dim=inter_size, in_channels=7).to(device)
 netE.apply(weights_init)
@@ -97,7 +98,7 @@ def test():
             vec = self.encoder(input)
             return self.decoder(vec)
     def data_iterator():
-        for x, y, step, epoch in data_loader(0, 1000):
+        for x, y, step, epoch in data_loader(0, 5):
             yield x,y
 
     model = Model(netE, netD)
@@ -105,9 +106,8 @@ def test():
         model,
         data_iterator(),
         lambda lr: optim.Adam(model.parameters(), lr=lr, weight_decay=5e-3),
-        nn.HuberLoss(),
         lr_low=1e-8,
-        lr_max=1e3,
+        lr_max=1e2,
         mult=1.1
     )
     fig = plt.figure()
@@ -129,10 +129,12 @@ if test_start:
 criterion1 = nn.HuberLoss()
 criterion2 = nn.KLDivLoss()
 alpha = 5
-optimizerE = optim.Adam(netE.parameters(), lr=lr, betas=(beta1, 0.999))
-optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
+optimizerE = optim.Adam(netE.parameters(), lr=lr, betas=(beta1, 0.999), weight_decay=1e-4)
+optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999), weight_decay=1e-4)
 first_name = str(criterion1.__class__).split(".")[-1].split("'")[0]
 second_name = str(criterion2.__class__).split(".")[-1].split("'")[0]
+schedulerE = optim.lr_scheduler.CyclicLR(optimizerE, base_lr=lr_base, max_lr=lr, cycle_momentum=False, step_size_up=480)
+schedulerD = optim.lr_scheduler.CyclicLR(optimizerD, base_lr=lr_base, max_lr=lr, cycle_momentum=False, step_size_up=480)
 
 
 print('Processing test data...')
@@ -166,10 +168,13 @@ for x,y, i, epoch in data_loader(1, max_cached):
 
     wandb_log = {}
     if i % loss_step == 0:
+        schedulerE.step()
+        schedulerD.step()
         ma_losses.append(sum(losses) / len(losses))
         print('step', i, ma_losses[-1], end='\r')
         losses = losses[-ma_param:]
         wandb_log["train_losses"] = ma_losses[-1]
+        wandb_log['lr'] = schedulerD.get_last_lr()[0]
     if i % test_step == 0:
         with torch.no_grad():
             y_test = netD(netE(tx))
